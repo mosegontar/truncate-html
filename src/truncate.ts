@@ -46,8 +46,6 @@ export interface IFullOptions {
    *  be replaced with one space, set it true to keep them
    */
   keepWhitespaces: boolean
-
-  bidirectionalTarget: string
 }
 
 /**
@@ -66,9 +64,7 @@ interface IHelper {
   setup (options: IOptions): void
   extend (a: any, b: any): any
   isBlank (char: string): boolean
-  sumLengths (arr: Array<CheerioElement>, $: CheerioStatic)
-  reverseTruncate (text: string, isLastNode?: boolean): string
-  truncate (text: string, isLastNode?: boolean, reverse?: boolean): string
+  truncate (text: string, isLastNode?: boolean): string
   substr (arr: Array<string>, len: number): string
 }
 
@@ -88,8 +84,7 @@ const defaultOptions: IOptions = {
   excludes: '', // remove tags
   reserveLastWord: false, // keep word completed if truncate at the middle of the word, works no matter byWords is true/false
   trimTheOnlyWord: false,
-  keepWhitespaces: false, // even if set true, continuous whitespace will count as one
-  bidirectionalTarget: ''
+  keepWhitespaces: false // even if set true, continuous whitespace will count as one
 }
 
 const astralRange: RegExp = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]?|[\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]|\ud83c[\udffb-\udfff])?)*/g
@@ -153,26 +148,13 @@ const helper = {
       char === '\u2029'
     )
   },
-  // Returns the sum of the text node lengths contained in arr
-  sumLengths (arr, $) {
-    return arr.map(el => $(el).text().length)
-              .reduce((x, y) => x + y)
-  },
-  reverseTruncate(text, isLastNode) {
-    const reversedText = text.split("").reverse().join("")
-    const truncated = this.truncate(reversedText, isLastNode)
-    return truncated.split("").reverse().join("")
-  },
   /**
    * truncate text
    * @param  {String}  text        text to truncate
    * @param  {Boolean} isLastNode  is last dom node, help to decide whether add ellipsis
    * @return {String}
    */
-  truncate (text, isLastNode, reverse) {
-    if (reverse) {
-      return this.reverseTruncate(text, isLastNode)
-    }
+  truncate (text, isLastNode) {
     if (!this.keepWhitespaces) {
       text = text.replace(/\s+/g, ' ')
     }
@@ -300,22 +282,19 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
     // Add a wrapper for text node without tag like:
     //   <p>Lorem ipsum <p>dolor sit => <div><p>Lorem ipsum <p>dolor sit</div>
     $ = cheerio.load(`${html}`, {
-      decodeEntities: helper.options.decodeEntities,
+      decodeEntities: helper.options.decodeEntities
     })
   }
   const $html = $.root()
-
   // remove excludes elements
   helper.options.excludes && $html.find(helper.options.excludes as string).remove()
   // strip tags and get pure text
   if (helper.options.stripTags) {
     return helper.truncate($html.text())
   }
-
-  const travelChildren = function ($ele: Cheerio, isParentLastNode = true, reverseTruncation = false) {
+  const travelChildren = function ($ele: Cheerio, isParentLastNode = true) {
     const contents = $ele.contents()
     const lastIdx = contents.length - 1
-
     return contents.each(function (this: CheerioElement, idx) {
       switch (this.type) {
         case 'text':
@@ -325,15 +304,14 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
           }
           this.data = helper.truncate(
             $(this).text(),
-            isParentLastNode && idx === lastIdx,
-            reverseTruncation
+            isParentLastNode && idx === lastIdx
           )
           break
         case 'tag':
           if (!helper.limit) {
             $(this).remove()
           } else {
-            return travelChildren($(this), isParentLastNode && idx === lastIdx, reverseTruncation)
+            return travelChildren($(this), isParentLastNode && idx === lastIdx)
           }
           break
         default:
@@ -342,91 +320,7 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
       }
     })
   }
-
-  // Remove nodes from wingNodes until the first node in the array can be truncated
-  // such that the sum of the node text lengths in the entire array is within our
-  // truncation limit. Once we've removed enough nodes, we truncate the first node
-  // in the array.
-  const truncateWings = function (wingNodes: Array<CheerioElement>, reverseTruncation = false) {
-    if (wingNodes.length === 0) {
-      return
-    }
-
-    if (wingNodes.length === 1 || helper.sumLengths(wingNodes.slice(1), $) <= helper.limit) {
-      const firstNode = $(wingNodes[0])
-
-      if (firstNode.get(0).type === "text") {
-        firstNode.get(0).data = helper.truncate($(firstNode).text(), true, reverseTruncation)
-        return
-      } else {
-        return travelChildren(firstNode, true, reverseTruncation)
-      }
-
-    } else {
-      $(wingNodes[0]).remove()
-      return truncateWings(wingNodes.slice(1), reverseTruncation)
-    }
-  }
-
-  const bidirectionalTruncation = function (selector) {
-    const targetNode = $html.find(selector)
-    if (targetNode.length === 0) {
-      throw new Error("Could not find node matching bidirectionalTarget selector")
-    }
-
-    // Truncate the targetNode normally (without bidirectional truncation)
-    // if it happens to be longer than the truncation limit.
-     if (targetNode.text().length >= helper.limit) {
-      travelChildren(targetNode)
-      return targetNode
-    }
-
-    let containerNode = targetNode
-    let containerParent = containerNode.parent()
-    // Find the largest node containing the targetNode that is within the truncation limit.
-    while (containerParent.length > 0 && containerParent.text().length < helper.limit) {
-      containerNode = containerParent
-      containerParent = containerNode.parent()
-    }
-
-    // If we've reached the root node, it means that
-    // the current containerNode is within the truncation limit,
-    // so return it unaltered.
-    if (containerParent.length === 0) {
-      return containerNode
-    }
-
-    const remaining = helper.limit - containerNode.text().length
-
-    // The ideal length of the text content preceding and following the
-    // containerNode. The actual length of each "wing" may be less than
-    // this size, as it depends on the actual initial length of the wing.
-    const wingSize = Math.ceil(remaining / 2)
-
-    // Partition the siblings of our containerNode into two arrays:
-    // leftWing: containing all sibling nodes preceding our containerNode
-    // rightWing: containing all sibling nodes following our containerNode
-    const parentContents = containerParent.contents()
-    const targetIndex = $(parentContents).index(containerNode)
-    const leftWing = parentContents.slice(0, targetIndex)
-    const rightWing = parentContents.slice(targetIndex + 1)
-
-    helper.limit = wingSize
-    truncateWings(leftWing.toArray(), true)
-
-    helper.limit = wingSize
-    truncateWings(rightWing.toArray().reverse())
-
-    return containerParent
-  }
-
-  if (helper.options.bidirectionalTarget) {
-    const fragment = bidirectionalTruncation(helper.options.bidirectionalTarget)
-    return $.html(fragment)
-  } else {
-    travelChildren($html)
-  }
-
+  travelChildren($html)
   return $html.html()
 } as ITruncateHtml
 

@@ -66,6 +66,7 @@ interface IHelper {
   setup (options: IOptions): void
   extend (a: any, b: any): any
   isBlank (char: string): boolean
+  textLength (text: string): number
   sumLengths (arr: Array<CheerioElement>, $: CheerioStatic)
   reverseTruncate (text: string, isLastNode?: boolean): string
   truncate (text: string, isLastNode?: boolean, reverse?: boolean): string
@@ -153,9 +154,16 @@ const helper = {
       char === '\u2029'
     )
   },
+  textLength (text) {
+    if (!this.keepWhitespaces) {
+      return text.replace(/\s+/g, ' ').length
+    } else {
+      return text.length
+    }
+  },
   // Returns the sum of the text node lengths contained in arr
   sumLengths (arr, $) {
-    return arr.map(el => $(el).text().length)
+    return arr.map(el => this.textLength($(el).text()))
               .reduce((x, y) => x + y)
   },
   reverseTruncate(text, isLastNode) {
@@ -307,10 +315,6 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
 
   // remove excludes elements
   helper.options.excludes && $html.find(helper.options.excludes as string).remove()
-  // strip tags and get pure text
-  if (helper.options.stripTags) {
-    return helper.truncate($html.text())
-  }
 
   const travelChildren = function ($ele: Cheerio, isParentLastNode = true, reverseTruncation = false) {
     const contents = $ele.contents()
@@ -370,13 +374,21 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
 
   const bidirectionalTruncation = function (selector) {
     const targetNode = $html.find(selector)
+
     if (targetNode.length === 0) {
       throw new Error("Could not find node matching bidirectionalTarget selector")
     }
 
+    if (helper.options.keepWhitespaces) {
+      const targetNodeHthml = targetNode.html()
+      if (targetNodeHthml) {
+        targetNode.html(targetNodeHthml.replace(/\s+/g, ' '))
+      }
+    }
+
     // Truncate the targetNode normally (without bidirectional truncation)
     // if it happens to be longer than the truncation limit.
-     if (targetNode.text().length >= helper.limit) {
+     if (helper.textLength(targetNode.text()) >= helper.limit) {
       travelChildren(targetNode)
       return targetNode
     }
@@ -384,7 +396,7 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
     let containerNode = targetNode
     let containerParent = containerNode.parent()
     // Find the largest node containing the targetNode that is within the truncation limit.
-    while (containerParent.length > 0 && containerParent.text().length < helper.limit) {
+    while (containerParent.length > 0 && helper.textLength(containerParent.text()) < helper.limit) {
       containerNode = containerParent
       containerParent = containerNode.parent()
     }
@@ -396,7 +408,7 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
       return containerNode
     }
 
-    const remaining = helper.limit - containerNode.text().length
+    const remaining = helper.limit - helper.textLength(containerNode.text())
 
     // The ideal length of the text content preceding and following the
     // containerNode. The actual length of each "wing" may be less than
@@ -422,10 +434,20 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
 
   if (helper.options.bidirectionalTarget) {
     const fragment = bidirectionalTruncation(helper.options.bidirectionalTarget)
-    return $.html(fragment)
-  } else {
-    travelChildren($html)
+
+    if (helper.options.stripTags) {
+      return fragment.text()
+    } else {
+      return $.html(fragment)
+    }
   }
+
+    // strip tags and get pure text
+  if (helper.options.stripTags) {
+    return helper.truncate($html.text())
+  }
+
+  travelChildren($html)
 
   return $html.html()
 } as ITruncateHtml

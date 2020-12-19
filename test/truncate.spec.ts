@@ -590,6 +590,44 @@ describe('Truncate html', () => {
 
       expect(truncate(html, options)).toBe(expected)
     })
+
+    describe('with additional options', () => {
+     it('works with options.stripTags', () => {
+        const html = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+        const expected = '...that i want to  pres...'
+        const options = {
+          length: 20,
+          stripTags: true,
+          bidirectionalTarget: 'span'
+        }
+
+        expect(truncate(html, options)).toBe(expected)
+      })
+
+     it('works with options.reserveLastWord', () => {
+        const html = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+        const expected = '<p>...that <span>i <e>want</e> to </span> preserve</p>'
+        const options = {
+          length: 14,
+          reserveLastWord: true,
+          bidirectionalTarget: 'span'
+        }
+
+        expect(truncate(html, options)).toBe(expected)
+      })
+
+     it('works with options.keepWhitespaces', () => {
+        const html = '<p>some <a>text    </a>    that               <span>i          <e>want</e> to </span>    preserve</p>'
+        const expected = '<p>    that               <span>i <e>want</e> to </span>    preser...</p>'
+        const options = {
+          length: 23,
+          keepWhitespaces: true,
+          bidirectionalTarget: 'span'
+        }
+
+        expect(truncate(html, options)).toBe(expected)
+      })
+    })
   })
 
   describe('with options.decodeEntities', () => {

@@ -1,6 +1,6 @@
 /*!
  * trancate-html v1.0.3
- * Copyright© 2020 Saiya https://github.com/evecalm/truncate-html#readme
+ * Copyright© 2019 Saiya https://github.com/evecalm/truncate-html#readme
  */
 'use strict';
 
@@ -22,8 +22,7 @@ var defaultOptions = {
     excludes: '',
     reserveLastWord: false,
     trimTheOnlyWord: false,
-    keepWhitespaces: false,
-    bidirectional: false
+    keepWhitespaces: false // even if set true, continuous whitespace will count as one
 };
 var astralRange = /\ud83c[\udffb-\udfff](?=\ud83c[\udffb-\udfff])|(?:[^\ud800-\udfff][\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]?|[\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe23\u20d0-\u20f0]|\ud83c[\udffb-\udfff])?)*/g;
 // helper method
@@ -210,8 +209,7 @@ var truncate = function (html, length, options) {
         // Add a wrapper for text node without tag like:
         //   <p>Lorem ipsum <p>dolor sit => <div><p>Lorem ipsum <p>dolor sit</div>
         $ = cheerio.load(("" + html), {
-            decodeEntities: helper.options.decodeEntities,
-            xmlMode: helper.options.bidirectional
+            decodeEntities: helper.options.decodeEntities
         });
     }
     var $html = $.root();

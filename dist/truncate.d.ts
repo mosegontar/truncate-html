@@ -45,7 +45,6 @@ export interface IFullOptions {
      *  be replaced with one space, set it true to keep them
      */
     keepWhitespaces: boolean;
-    bidirectional: boolean;
 }
 /**
  * options interface for function

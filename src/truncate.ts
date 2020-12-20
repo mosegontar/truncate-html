@@ -356,7 +356,17 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
       return
     }
 
-    if (wingNodes.length === 1 || helper.sumLengths(wingNodes.slice(1), $) <= helper.limit) {
+    let siblingTextLength
+    if (wingNodes.length === 1) {
+      siblingTextLength = 0
+    } else {
+      siblingTextLength = helper.sumLengths(wingNodes.slice(1), $)
+    }
+
+    if (siblingTextLength < helper.limit) {
+      // how much to truncate the first node by
+      helper.limit -= siblingTextLength
+
       const firstNode = $(wingNodes[0])
 
       if (firstNode.get(0).type === "text") {

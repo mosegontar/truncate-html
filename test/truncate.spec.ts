@@ -627,6 +627,18 @@ describe('Truncate html', () => {
 
         expect(truncate(html, options)).toBe(expected)
       })
+
+     it('works with options.excludes', () => {
+       const html = '<p>hello <img src="abc.png">text <span>i <e>want</e> to </span> preserve</p>'
+       const expected = '<p>...lo text <span>i <e>want</e> to </span> preserv...</p>'
+       const options = {
+         length: 26,
+         excludes: 'img',
+         bidirectionalTarget: 'span'
+       }
+
+       expect(truncate(html, options)).toBe(expected)
+     })
     })
   })
 

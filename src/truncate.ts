@@ -437,6 +437,8 @@ const truncate = function (html: string | CheerioStatic, length?: any, options?:
     truncateWings(leftWing.toArray(), true)
 
     helper.limit = wingSize
+    // Use reverse() so that nodes at the end of rightWing
+    // are evaluated and processed first.
     truncateWings(rightWing.toArray().reverse())
 
     return containerParent

@@ -490,6 +490,158 @@ describe('Truncate html', () => {
     })
   })
 
+
+  describe('with options.bidirectionalTarget', () => {
+   it('should handle bidirectional truncation', () => {
+      const html = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+      const expected = '<p>...that <span>i <e>want</e> to </span> pres...</p>'
+      const options = {
+        length: 20,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it('should throw an error when no element matching the bidirectionalTarget selector is found', () => {
+      const html = '<p>some text</p>'
+      const expected = '<p>some text</p>'
+      const options = {
+        length: 10,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(() => { truncate(html, options) }).toThrowError()
+    })
+
+    it('should return the original html unchanged when the truncation length is longer than the text of the html', () => {
+      const html = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+      const expected = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+      const options = {
+        length: 200,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it('should truncate normally (without bidirectional truncation) when the target node text is longer than the truncation length', () => {
+      const html = '<p>some <span>some text</span> </p>'
+      const expected = '<span>som...</span>'
+      const options = {
+        length: 3,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it('should handle the case when the root element matches the bidirectionalTarget selector', () => {
+      const html = '<p>some text</p>'
+      const expected = '<p>some tex...</p>'
+      const options = {
+        length: 8,
+        bidirectionalTarget: 'p'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it("should handle the case where the target node's parent only contains text preceding the target node", () => {
+      const html = '<p>some <a>c<span>some text</span></a></p>'
+      const expected = '<a>c<span>some text</span></a>'
+      const options = {
+        length: 10,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it("should handle the case where the target node's parent only contains text following the target node", () => {
+      const html = '<p>some <a><span>some text</span>c</a></p>'
+      const expected = '<a><span>some text</span>c</a>'
+      const options = {
+        length: 10,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it("should handle the case where the parent node does not contain additional text content", () => {
+      const html = '<p>and<a><span>some text</span></a></p>'
+      const expected = '<p>...d<a><span>some text</span></a></p>'
+      const options = {
+        length: 10,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    it('should handle bidirectional truncation when the target element has more than one parent', () => {
+      const html = '<div> outside text <p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p> outside text </div>'
+      const expected = '<p>...that <span>i <e>want</e> to </span> pres...</p>'
+      const options = {
+        length: 20,
+        bidirectionalTarget: 'span'
+      }
+
+      expect(truncate(html, options)).toBe(expected)
+    })
+
+    describe('with additional options', () => {
+     it('works with options.stripTags', () => {
+        const html = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+        const expected = '...that i want to  pres...'
+        const options = {
+          length: 20,
+          stripTags: true,
+          bidirectionalTarget: 'span'
+        }
+
+        expect(truncate(html, options)).toBe(expected)
+      })
+
+     it('works with options.reserveLastWord', () => {
+        const html = '<p>some <a>text</a> that <span>i <e>want</e> to </span> preserve</p>'
+        const expected = '<p>...that <span>i <e>want</e> to </span> preserve</p>'
+        const options = {
+          length: 14,
+          reserveLastWord: true,
+          bidirectionalTarget: 'span'
+        }
+
+        expect(truncate(html, options)).toBe(expected)
+      })
+
+     it('works with options.keepWhitespaces', () => {
+        const html = '<p>some <a>text    </a>    that               <span>i          <e>want</e> to </span>    preserve</p>'
+        const expected = '<p>    that               <span>i <e>want</e> to </span>    preser...</p>'
+        const options = {
+          length: 23,
+          keepWhitespaces: true,
+          bidirectionalTarget: 'span'
+        }
+
+        expect(truncate(html, options)).toBe(expected)
+      })
+
+     it('works with options.excludes', () => {
+       const html = '<p>hello <img src="abc.png">text <span>i <e>want</e> to </span> preserve</p>'
+       const expected = '<p>...lo text <span>i <e>want</e> to </span> preserv...</p>'
+       const options = {
+         length: 26,
+         excludes: 'img',
+         bidirectionalTarget: 'span'
+       }
+
+       expect(truncate(html, options)).toBe(expected)
+     })
+    })
+  })
+
   describe('with options.decodeEntities', () => {
     it('should handle encoded characters', () => {
       const html = '<p>&nbsp;test for &lt;p&gt; encoded string</p>'
